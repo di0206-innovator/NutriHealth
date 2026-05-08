@@ -1,19 +1,13 @@
 from fastapi import APIRouter, HTTPException, Request as FastRequest
 from models.schemas import AnalyzeRequest, AnalyzeResponse, ErrorResponse
 from services.gemini_service import analyze_meal
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from limiter import limiter
 
 router = APIRouter()
-# Limiter instance is shared via app.state in main.py, but we can also use it here if needed if we import it.
-# For simplicity, we reference the one on app.state if we had the request object.
 
 @router.post("/analyze")
-# Snippet 14: Apply rate limit
+@limiter.limit("10/minute")
 async def analyze_food(request: FastRequest, body: AnalyzeRequest):
-    # In a real app, we'd use the limiter from app.state:
-    # app.state.limiter.limit("20/hour")(analyze_food)(request, body)
-    
     if not body.meal_text and not body.image_base64:
         raise HTTPException(
             status_code=400, 

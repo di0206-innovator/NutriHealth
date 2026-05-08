@@ -1,14 +1,16 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List, Dict
 import os
 from datetime import datetime, timedelta
 import google.generativeai as genai
+from limiter import limiter
 
 router = APIRouter()
 
 # Simple weekly report implementation (Snippet 3)
 @router.post("/report/weekly")
-async def weekly_report(uid: str):
+@limiter.limit("5/minute")
+async def weekly_report(request: Request, uid: str):
     # In a real app with Firebase Admin:
     # meals = await get_meals_last_n_days(uid, 7)
     
