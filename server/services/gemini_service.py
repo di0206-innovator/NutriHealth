@@ -1,19 +1,18 @@
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import json
 import base64
 import os
-import re
 import hashlib
 import time
 from typing import List, Optional
-from models.schemas import AnalyzeResponse, MacroBreakdown, ErrorResponse
-from services.prompt_builder import build_analysis_prompt
+from models.schemas import AnalyzeResponse, DailySummary
+from services.prompt_builder import build_analysis_prompt, build_diet_report_prompt
 from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-pro")
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Snippet 13: In-memory cache
 _cache = {}  # {hash: (result, timestamp)}
@@ -22,12 +21,17 @@ CACHE_TTL = 3600  # 1 hour
 def get_cache_key(meal_text: str, profile_str: str) -> str:
     return hashlib.md5(f"{meal_text}:{profile_str}".encode()).hexdigest()
 
-def clean_json_response(text: str) -> str:
-    """Strip markdown code fences if model wraps response despite instructions."""
-    text = text.strip()
-    text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
-    text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
-    text = re.sub(r'\s*```$', '', text, flags=re.MULTILINE)
+def clean_json_response(response_text: str) -> str:
+    """Removes potential markdown code fences from AI response."""
+    text = response_text.strip()
+    if text.startswith("```json"):
+        text = text[len("```json"):]
+    elif text.startswith("```"):
+        text = text[len("```"):]
+    
+    if text.endswith("```"):
+        text = text[:-len("```")]
+    
     return text.strip()
 
 async def analyze_meal(meal_text: str = None, image_base64: str = None, 
@@ -48,67 +52,40 @@ async def analyze_meal(meal_text: str = None, image_base64: str = None,
         meal_description = meal_text or "food shown in the image"
         prompt = build_analysis_prompt(meal_description, user_profile, meal_type, meal_history)
         
-        content_parts = [prompt]
+        contents = [prompt]
         
         if image_base64:
             image_data = base64.b64decode(image_base64)
-            content_parts.append({
-                "mime_type": image_mime_type,
-                "data": image_data
-            })
+            contents.append(types.Part.from_bytes(data=image_data, mime_type=image_mime_type))
         
-        response = model.generate_content(
-            content_parts,
-            generation_config=genai.types.GenerationConfig(
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=AnalyzeResponse,
                 temperature=0.3,
-                max_output_tokens=1024,
             )
         )
         
-        raw_text = response.text
+        # Use .parsed to get the Pydantic model directly
+        parsed_model = response.parsed
+        # Convert to dict for compatibility with existing code
+        parsed = parsed_model.model_dump()
         
-        # Robust JSON extraction
-        json_match = re.search(r'(\{.*\})', raw_text, re.DOTALL)
-        if json_match:
-            cleaned = json_match.group(1)
-        else:
-            cleaned = clean_json_response(raw_text)
-            
-        parsed = json.loads(cleaned)
-        
-        # Validate and clamp values
-        parsed["health_score"] = max(1, min(10, int(parsed.get("health_score", 5))))
-        parsed["calories_estimate"] = max(0, int(parsed.get("calories_estimate", 0)))
-        
-        # Ensure lists have content
-        if not parsed.get("insights"):
-            parsed["insights"] = ["No specific insights available for this meal."]
-        if not parsed.get("healthier_alternatives"):
-            parsed["healthier_alternatives"] = ["Consider adding more vegetables to this meal."]
-        if not parsed.get("top_ingredients"):
-            parsed["top_ingredients"] = []
-            
         # Snippet 13: Save to cache
         if meal_text and not image_base64:
             _cache[cache_key] = (parsed, time.time())
             
         return {"success": True, "data": parsed}
         
-    except json.JSONDecodeError as e:
-        return {
-            "success": False,
-            "error": "parse_error",
-            "message": "Could not parse the nutrition analysis",
-            "suggestion": "Try typing the meal name instead of using a photo"
-        }
     except Exception as e:
         error_msg = str(e).lower()
+        suggestion = "Please try again later"
         if "quota" in error_msg or "rate" in error_msg:
             suggestion = "Please wait a moment and try again"
         elif "safety" in error_msg:
             suggestion = "Please try a different image or describe your meal in text"
-        else:
-            suggestion = "Try describing your meal in text instead"
             
         return {
             "success": False,
@@ -116,3 +93,29 @@ async def analyze_meal(meal_text: str = None, image_base64: str = None,
             "message": "Analysis temporarily unavailable",
             "suggestion": suggestion
         }
+
+async def generate_diet_report(meals: List[dict], user_profile: dict) -> dict:
+    """Generates a comprehensive end-of-day diet report and personalized advice."""
+    try:
+        prompt = build_diet_report_prompt(meals, user_profile)
+        
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=DailySummary,
+                temperature=0.4,
+            )
+        )
+        
+        parsed_model = response.parsed
+        return {"success": True, "data": parsed_model.model_dump()}
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": "report_error",
+            "message": f"Failed to generate daily report: {str(e)}"
+        }
+

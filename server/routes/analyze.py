@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, HTTPException, Request as FastRequest
 from models.schemas import AnalyzeRequest, AnalyzeResponse, ErrorResponse
 from services.gemini_service import analyze_meal

@@ -43,7 +43,7 @@ USER PROFILE:
     else:
         profile_context = f"USER PROFILE: General. Timing: {get_time_context()}"
 
-    return f"""Analyze this meal for a health-conscious user: {meal_description}. 
+    return f"""Analyze this {meal_type} for a health-conscious user: {meal_description}. 
 
 {profile_context}
 
@@ -66,4 +66,45 @@ Return ONLY valid JSON with this structure:
   "personalized_advice": "2-3 sentences max",
   "portion_note": "optional string",
   "top_ingredients": [{{ "name": "string", "health_impact": "positive|neutral|negative", "reason": "string" }}]
+}}"""
+
+def build_diet_report_prompt(meals: List[dict], user_profile: dict) -> str:
+    meals_summary = []
+    for m in meals:
+        date_str = m.get('timestamp', '').split('T')[0] if m.get('timestamp') else 'Unknown'
+        meals_summary.append(f"Date: {date_str}, Food: {m.get('food_name')}, Cal: {m.get('calories_estimate')}, Macros: {m.get('macros')}")
+    
+    meals_text = "\n".join(meals_summary)
+    
+    return f"""Generate a comprehensive diet report for the following historical meals:
+{meals_text}
+
+USER CONTEXT:
+- Goal: {user_profile.get('goal', 'general')}
+- Restrictions: {user_profile.get('restriction', 'none')}
+
+Generate a response in valid JSON with this EXACT structure:
+{{
+  "summary": "1-paragraph summary of overall trends",
+  "average_calories": <float>,
+  "average_macros": {{
+    "carbs_g": <float>,
+    "protein_g": <float>,
+    "fat_g": <float>,
+    "fiber_g": <float>,
+    "sodium_mg": <float>,
+    "sugar_g": <float>,
+    "glycemic_load": <float>
+  }},
+  "daily_summaries": [
+    {{
+      "date": "YYYY-MM-DD",
+      "calories": <int>,
+      "macros": {{ "carbs_g": <float>, "protein_g": <float>, "fat_g": <float> }},
+      "notable_events": ["list of 1-2 key things that happened this day"]
+    }}
+  ],
+  "strengths": ["list of 3 strengths"],
+  "areas_for_improvement": ["list of 3 areas"],
+  "personalized_plan": "A concrete 3-step action plan for next week"
 }}"""

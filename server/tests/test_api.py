@@ -1,7 +1,17 @@
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from unittest.mock import patch, AsyncMock
 from main import app
+
+from fastapi.testclient import TestClient
+
+client = TestClient(app)
+
+def test_health_check():
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+    assert "version" in response.json()
 
 # Snippet 21: API integration test with httpx
 @pytest.mark.asyncio
@@ -21,9 +31,9 @@ async def test_analyze_text_meal_success():
         }
     }
     # Mocking the service to avoid real API calls during test
-    with patch('services.gemini_service.analyze_meal', 
+    with patch('routes.analyze.analyze_meal', 
                new_callable=AsyncMock, return_value=mock_response):
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/api/analyze", 
                 json={"meal_text": "dal rice"})
     
@@ -35,7 +45,7 @@ async def test_analyze_text_meal_success():
 
 @pytest.mark.asyncio  
 async def test_analyze_rejects_empty_request():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # Pydantic will catch empty body if required fields aren't optional
         # or if we send malformed JSON
         response = await client.post("/api/analyze", json={})

@@ -1,4 +1,5 @@
 import re
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 
@@ -44,8 +45,8 @@ class AnalyzeResponse(BaseModel):
     health_score: int = Field(..., ge=1, le=10)
     calories_estimate: int
     macros: MacroBreakdown
-    insights: List[str] = Field(..., min_items=1, max_items=5)
-    healthier_alternatives: List[str] = Field(..., max_items=3)
+    insights: List[str] = Field(..., min_length=1, max_length=5)
+    healthier_alternatives: List[str] = Field(..., max_length=3)
     personalized_advice: str
     portion_note: Optional[str] = None
     top_ingredients: List[IngredientDetail] = Field(default_factory=list)
@@ -54,3 +55,23 @@ class ErrorResponse(BaseModel):
     error: str
     message: str
     suggestion: str
+
+class DietReportRequest(BaseModel):
+    user_id: str
+    days: int = Field(default=7, ge=1, le=30)
+    user_profile: Optional[UserProfile] = None
+
+class DailySummary(BaseModel):
+    date: str
+    calories: int
+    macros: MacroBreakdown
+    notable_events: List[str]
+
+class DietReportResponse(BaseModel):
+    summary: str
+    average_calories: float
+    average_macros: MacroBreakdown
+    daily_summaries: List[DailySummary]
+    strengths: List[str]
+    areas_for_improvement: List[str]
+    personalized_plan: str

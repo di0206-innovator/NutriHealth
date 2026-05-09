@@ -2,12 +2,17 @@ import os
 import uuid
 import time
 import logging
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, Request
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+# pyrefly: ignore [missing-import]
 from fastapi.staticfiles import StaticFiles
+# pyrefly: ignore [missing-import]
 from fastapi.responses import FileResponse
 from routes.analyze import router as analyze_router
 from routes.report import router as report_router
+# pyrefly: ignore [missing-import]
 import uvicorn
 
 # Snippet 17: Structured logging configuration
@@ -20,7 +25,9 @@ logger = logging.getLogger("nutrilens")
 app = FastAPI(title="NutriLens API", version="1.0.0")
 
 # Snippet 14: SlowAPI for rate limiting (needs to be available globally)
+# pyrefly: ignore [missing-import]
 from slowapi import _rate_limit_exceeded_handler
+# pyrefly: ignore [missing-import]
 from slowapi.errors import RateLimitExceeded
 from limiter import limiter
 

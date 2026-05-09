@@ -25,3 +25,5 @@ wheels/
 .idea/
 .DS_Store
 *.pem
+venv/
+server/venv/
