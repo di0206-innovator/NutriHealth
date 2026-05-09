@@ -1,64 +1,56 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
-from typing import List, Dict
-import os
-from datetime import datetime, timedelta
-# pyrefly: ignore [missing-import]
-import google.generativeai as genai
+from fastapi import APIRouter, HTTPException, Request as FastRequest, Query
+from typing import Optional, List, Dict
+from models.schemas import DietReportRequest, DietReportResponse
+from services.gemini_service import generate_weekly_report
 from limiter import limiter
+from database import db
+from datetime import datetime, timedelta
+from firebase_admin import firestore
 
 router = APIRouter()
 
-# Simple weekly report implementation (Snippet 3)
-@router.post("/report/weekly")
+@router.get("/report/weekly")
 @limiter.limit("5/minute")
-async def weekly_report(request: Request, uid: str):
-    # In a real app with Firebase Admin:
-    # meals = await get_meals_last_n_days(uid, 7)
-    
-    # Mock data for demonstration purposes, as current firebase.js integration 
-    # uses client-side Firebase SDK. 
-    # For now, this acts as the structure for the integration.
-    
-    # Simulating data fetch logic
-    meals = [
-        {"food_name": "Greek Yogurt Bowl", "health_score": 8, "user_goal": "maintain"},
-        {"food_name": "Chicken Quinoa", "health_score": 9, "user_goal": "maintain"},
-        {"food_name": "Deep Dish Pizza", "health_score": 3, "user_goal": "maintain"}
-    ]
-    
-    if len(meals) < 3:
-        return {"error": "Need at least 3 meals logged for a weekly report"}
-    
-    avg_score = sum(m['health_score'] for m in meals) / len(meals)
-    best = max(meals, key=lambda m: m['health_score'])
-    worst = min(meals, key=lambda m: m['health_score'])
-    
-    model = genai.GenerativeModel("gemini-1.5-pro")
-    
-    prompt = f"""
-You are a personal dietitian writing a weekly health summary.
-The user logged {len(meals)} meals this week.
-Average health score: {avg_score:.1f}/10
-Best meal: {best['food_name']} (score {best['health_score']})
-Worst meal: {worst['food_name']} (score {worst['health_score']})
-All meals: {[m['food_name'] for m in meals]}
-User goal: {meals[0].get('user_goal','general')}
-
-Write a warm, personal 3-paragraph weekly summary:
-1. Overall performance this week (honest, not sycophantic)
-2. The one pattern you noticed (positive or negative)
-3. One specific, actionable focus for next week
-
-Keep it under 150 words. Warm but direct tone.
-"""
+async def get_weekly_report(request: FastRequest, user_id: str, days: int = 7):
+    # Fetch actual user history from Firestore
     try:
-        response = model.generate_content(prompt)
-        return {
-            "report": response.text, 
-            "stats": {
-                "avg_score": round(avg_score,1), 
-                "meals_logged": len(meals)
+        # Calculate time threshold
+        threshold = datetime.utcnow() - timedelta(days=days)
+        
+        # Query meals for the user within the time range
+        meals_ref = db.collection("users").document(user_id).collection("meals")
+        query = meals_ref.where("timestamp", ">=", threshold.isoformat()).order_by("timestamp", direction=firestore.Query.DESCENDING)
+        docs = query.stream()
+        
+        history = []
+        for doc in docs:
+            history.append(doc.to_dict())
+            
+        if not history:
+            # If no history, we can't generate a report
+            return {
+                "success": False, 
+                "error": "no_data",
+                "message": "No meal history found for the selected period",
+                "suggestion": "Log some meals first to generate a report"
             }
-        }
+            
+        # Fetch user profile for personalization
+        user_doc = db.collection("users").document(user_id).get()
+        user_profile = user_doc.to_dict().get("profile", {}) if user_doc.exists else {}
+        
+        result = await generate_weekly_report(history, user_profile)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    if not result["success"]:
+        raise HTTPException(
+            status_code=500, 
+            detail={
+                "error": result.get("error"),
+                "message": result.get("message"),
+                "suggestion": result.get("suggestion")
+            }
+        )
+    
+    return {"success": True, "data": result["data"]}

@@ -1,41 +1,37 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
-from unittest.mock import patch, MagicMock
 from main import app
+from unittest.mock import patch, MagicMock
 
 @pytest.mark.asyncio
 async def test_weekly_report_success():
-    mock_meals = [
-        {"food_name": "Oats", "calories": 300, "health_score": 9},
-        {"food_name": "Chicken Salad", "calories": 400, "health_score": 8},
-        {"food_name": "Fruit Bowl", "calories": 200, "health_score": 10},
-    ]
-    
-    mock_gemini_response = MagicMock()
-    mock_gemini_response.text = "## Weekly Insights\nYour diet is excellent."
-    
-    # We patch the model's generate_content method
-    # Since it's imported as 'model' in routes.report
-    with patch('routes.report.model.generate_content') as mock_generate:
-        mock_generate.return_value = mock_gemini_response
+    mock_report_data = {
+        "summary": "Excellent diet.",
+        "average_calories": 1800,
+        "average_macros": {"carbs_g": 200, "protein_g": 100, "fat_g": 60, "fiber_g": 25, "sodium_mg": 1500, "sugar_g": 30, "glycemic_load": 15},
+        "daily_summaries": [],
+        "strengths": ["High protein"],
+        "areas_for_improvement": ["More fiber"],
+        "personalized_plan": "Keep it up."
+    }
+
+    with patch('routes.report.generate_weekly_report') as mock_gen:
+        mock_gen.return_value = {"success": True, "data": mock_report_data}
         
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post("/api/report/weekly", json={"meals": mock_meals})
+            response = await client.get("/api/report/weekly?user_id=test_user")
             
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "weekly_report" in data["data"]
-    assert "Weekly Insights" in data["data"]["weekly_report"]
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        assert response.json()["data"]["summary"] == "Excellent diet."
 
 @pytest.mark.asyncio
-async def test_weekly_report_insufficient_data():
-    mock_meals = [
-        {"food_name": "Oats", "calories": 300, "health_score": 9},
-    ]
-    
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post("/api/report/weekly", json={"meals": mock_meals})
+async def test_weekly_report_failure():
+    with patch('routes.report.generate_weekly_report') as mock_gen:
+        mock_gen.return_value = {"success": False, "error": "service_failure", "message": "Failed"}
         
-    assert response.status_code == 400
-    assert "At least 3 meals are required" in response.text
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/report/weekly?user_id=test_user")
+            
+        assert response.status_code == 500
+        assert "Failed" in response.json()["detail"]["message"]

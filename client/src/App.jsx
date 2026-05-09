@@ -73,7 +73,7 @@ export default function App() {
             <Route path="/history" element={<History meals={meals} />} />
             <Route path="/community" element={<Community user={user} />} />
             <Route path="/profile" element={<Profile user={user} profile={profile} logout={logout} />} />
-            <Route path="/reports" element={<Reports meals={meals} profile={profile} />} />
+            <Route path="/reports" element={<Reports meals={meals} profile={profile} user={user} />} />
             <Route path="/recipes" element={<RecipeBuilder user={user} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

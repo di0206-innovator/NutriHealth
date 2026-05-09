@@ -14,6 +14,7 @@ from routes.analyze import router as analyze_router
 from routes.report import router as report_router
 # pyrefly: ignore [missing-import]
 import uvicorn
+from database import db
 
 # Snippet 17: Structured logging configuration
 logging.basicConfig(
@@ -77,8 +78,8 @@ app.include_router(analyze_router, prefix="/api")
 app.include_router(report_router, prefix="/api")
 
 @app.get("/health")
-def health_check():
-    return {"status": "healthy", "service": "nutrilens-api"}
+async def health_check():
+    return {"status": "ok", "version": "1.0.0"}
 
 # Serve React static files in production
 static_dir = os.path.join(os.path.dirname(__file__), "static")

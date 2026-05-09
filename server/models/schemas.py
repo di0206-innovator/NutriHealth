@@ -1,6 +1,6 @@
 import re
 # pyrefly: ignore [missing-import]
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 
 class UserProfile(BaseModel):
@@ -15,7 +15,8 @@ class AnalyzeRequest(BaseModel):
     user_profile: Optional[UserProfile] = None
     meal_type: Optional[str] = "meal"
 
-    @validator('meal_text')
+    @field_validator('meal_text')
+    @classmethod
     def sanitize_meal_text(cls, v):
         if v is None: return v
         v = v.strip()
