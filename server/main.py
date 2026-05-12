@@ -4,17 +4,20 @@ import time
 import logging
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI, Request
-# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
-# pyrefly: ignore [missing-import]
 from fastapi.staticfiles import StaticFiles
-# pyrefly: ignore [missing-import]
 from fastapi.responses import FileResponse
 from routes.analyze import router as analyze_router
 from routes.report import router as report_router
-# pyrefly: ignore [missing-import]
+from routes.auth import router as auth_router
+from routes.profile import router as profile_router
+from routes.meals import router as meals_router
+from routes.community import router as community_router
 import uvicorn
-from database import db
+from database import engine, Base
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 # Snippet 17: Structured logging configuration
 logging.basicConfig(
@@ -43,7 +46,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Snippet 17: Request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     trace_id = str(uuid.uuid4())[:8]
@@ -76,6 +78,10 @@ async def add_security_headers(request, call_next):
 
 app.include_router(analyze_router, prefix="/api")
 app.include_router(report_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(profile_router, prefix="/api")
+app.include_router(meals_router, prefix="/api")
+app.include_router(community_router, prefix="/api")
 
 @app.get("/health")
 async def health_check():
@@ -94,4 +100,4 @@ if os.path.isdir(static_dir):
         return FileResponse(os.path.join(static_dir, "index.html"))
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

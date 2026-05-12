@@ -7,7 +7,10 @@
   },
   "auth": {
     "providers": {
-      "anonymous": true
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "NutriHealth",
+        "supportEmail": "divyanshu.b.sinha@gmail.com"
+      }
     }
   },
   "hosting": {

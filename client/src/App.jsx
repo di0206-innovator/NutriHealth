@@ -9,44 +9,69 @@ import Profile from './pages/Profile';
 import Onboarding from './pages/Onboarding';
 import Reports from './pages/Reports';
 import RecipeBuilder from './pages/RecipeBuilder';
-import SkeletonLoader from './components/SkeletonLoader';
 import { useState, useEffect } from 'react';
+import { RefreshCcw } from 'lucide-react';
+import { useAuth } from './contexts/AuthContext';
+import { api } from './utils/api';
 
 // NutriLens Root Ecosystem App
 export default function App() {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('v_user');
-    return saved ? JSON.parse(saved) : { uid: 'test-user-vitality', email: 'vitality@nutrilens.com' };
-  });
+  const { user, setUser, loading: authLoading, logout } = useAuth();
 
-  const [profile, setProfile] = useState(() => {
-    const saved = localStorage.getItem('v_profile');
-    return saved ? JSON.parse(saved) : { onboarded: true, goal: 'maintain', activity: 'active' };
-  });
-
-  const [meals, setMeals] = useState(() => {
-    const saved = localStorage.getItem('v_meals');
-    const defaultMeals = [
-      { id: 1, name: 'Greek Yogurt Bowl', calories: 280, protein: 18, carbs: 32, fat: 12, health_score: 8, timestamp: new Date(Date.now() - 86400000).toISOString() },
-      { id: 2, name: 'Quinoa Salad', calories: 420, protein: 15, carbs: 55, fat: 14, health_score: 9, timestamp: new Date(Date.now() - 172800000).toISOString() },
-      { id: 3, name: 'Grilled Salmon', calories: 350, protein: 34, carbs: 0, fat: 22, health_score: 10, timestamp: new Date(Date.now() - 259200000).toISOString() }
-    ];
-    return saved ? JSON.parse(saved) : defaultMeals;
-  });
+  const [profile, setProfile] = useState(null);
+  const [meals, setMeals] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
-    localStorage.setItem('v_user', JSON.stringify(user));
-    localStorage.setItem('v_profile', JSON.stringify(profile));
-    localStorage.setItem('v_meals', JSON.stringify(meals));
-  }, [user, profile, meals]);
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) {
+        setProfile(null);
+        setMeals([]);
+        setDataLoading(false);
+        return;
+      }
+
+      setDataLoading(true);
+      try {
+        const profileData = await api.request('/profile/');
+        setProfile(profileData);
+
+        if (profileData?.onboarded) {
+          const mealsData = await api.request('/meals/');
+          setMeals(mealsData || []);
+        }
+      } catch (error) {
+        console.error("Error fetching app data:", error);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    if (!authLoading) {
+      fetchData();
+    }
+  }, [user, authLoading]);
 
   const addMeal = (meal) => setMeals(prev => [meal, ...prev]);
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('v_user');
-  };
-
+  
   const isSimulated = !import.meta.env.VITE_FIREBASE_API_KEY;
+
+  if (authLoading || (user && dataLoading)) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px', background: 'var(--color-background)' }}>
+        <RefreshCcw className="animate-spin" size={40} color="var(--color-primary)" />
+        <p style={{ fontWeight: 800, color: 'var(--color-text-tertiary)', letterSpacing: '0.05em' }}>VERIFYING BIO-IDENTITY...</p>
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter>
@@ -67,10 +92,10 @@ export default function App() {
             <Route path="*" element={<Navigate to="/onboarding" replace />} />
           </>
         ) : (
-          <Route element={<Layout user={user} logout={logout} />}>
+          <Route element={<Layout user={user} logout={logout} theme={theme} toggleTheme={toggleTheme} />}>
             <Route path="/" element={<Dashboard meals={meals} profile={profile} user={user} />} />
-            <Route path="/analyze" element={<Analyze user={user} profile={profile} />} />
-            <Route path="/history" element={<History meals={meals} />} />
+            <Route path="/analyze" element={<Analyze user={user} profile={profile} addMeal={addMeal} />} />
+            <Route path="/history" element={<History meals={meals} user={user} />} />
             <Route path="/community" element={<Community user={user} />} />
             <Route path="/profile" element={<Profile user={user} profile={profile} logout={logout} />} />
             <Route path="/reports" element={<Reports meals={meals} profile={profile} user={user} />} />

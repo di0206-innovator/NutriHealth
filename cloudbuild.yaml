@@ -19,5 +19,7 @@ steps:
       - '--region'
       - 'us-central1'
       - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'JWT_SECRET_KEY=PLACEHOLDER_SECRET_KEY,DATABASE_URL=sqlite:///./nutrihealth.db'
 images:
   - 'gcr.io/$PROJECT_ID/nutrilens'

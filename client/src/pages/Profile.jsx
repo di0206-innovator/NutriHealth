@@ -1,116 +1,119 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { User, Settings, Shield, LogOut, ChevronRight, Target, Activity, Zap, Sparkles, Watch, Smartphone, CheckCircle2, RotateCw } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { User, Settings, Shield, Bell, LogOut, ChevronRight, Award, Zap, Activity } from 'lucide-react';
 
 export default function Profile({ user, profile, logout }) {
-  const [syncing, setSyncing] = useState(false);
-  const [synced, setSynced] = useState(false);
-
-  const simulateSync = () => {
-    setSyncing(true);
-    setTimeout(() => {
-      setSyncing(false);
-      setSynced(true);
-    }, 2500);
-  };
+  const userName = profile?.name || user?.email?.split('@')[0].toUpperCase() || 'ADMIN_UNIT_01';
+  const goalText = profile?.goal === 'lose' ? 'FAT LOSS OBJECTIVE' : profile?.goal === 'gain' ? 'HYPERTROPHY OBJECTIVE' : 'MAINTENANCE PROTOCOL';
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
   };
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 200, damping: 20 } }
+    show: { y: 0, opacity: 1 }
   };
+
+  const menuItems = [
+    { icon: <User size={20} />, label: 'Neural Profile', sub: 'Biometric data & preferences', color: 'var(--color-primary)' },
+    { icon: <Settings size={20} />, label: 'System Config', sub: 'App behavior & integration', color: 'var(--color-secondary)' },
+    { icon: <Shield size={20} />, label: 'Data Security', sub: 'Privacy & encryption settings', color: '#ff9500' },
+    { icon: <Bell size={20} />, label: 'Neural Alerts', sub: 'Sync & notification frequency', color: '#ff3b30' },
+  ];
 
   return (
     <motion.div 
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      style={{ display: 'flex', flexDirection: 'column', gap: '28px', paddingBottom: '100px' }}
+      style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '120px' }}
     >
-      <motion.div 
-        variants={itemVariants}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '20px 0' }}
-      >
-        <div style={{ width: '120px', height: '120px', borderRadius: '44px', background: 'linear-gradient(135deg, var(--color-primary) 0%, #ff5e7e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 20px 40px rgba(255,45,85,0.2)', marginBottom: '20px', fontSize: '3rem', fontWeight: 900 }}>
-          {user?.email[0].toUpperCase()}
+      {/* 1. Profile Header */}
+      <div style={{ textAlign: 'center', paddingTop: '20px' }}>
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <div style={{ 
+            width: '120px', 
+            height: '120px', 
+            borderRadius: '40px', 
+            background: 'linear-gradient(135deg, var(--color-primary), var(--color-secondary))',
+            padding: '4px'
+          }}>
+            <div style={{ width: '100%', height: '100%', borderRadius: '36px', background: 'var(--color-bg-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              <User size={60} color="var(--color-text-dim)" />
+            </div>
+          </div>
+          <div style={{ position: 'absolute', bottom: '-10px', right: '-10px', background: 'var(--color-primary)', width: '40px', height: '40px', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid var(--color-bg-deep)' }}>
+            <Award size={20} color="var(--color-bg-deep)" />
+          </div>
         </div>
-        <h2 style={{ fontSize: '1.8rem', fontWeight: 900 }}>{user?.email.split('@')[0]}</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)', background: 'rgba(255,45,85,0.08)', padding: '6px 14px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800, marginTop: '8px' }}>
-          <Sparkles size={14} /> VITALITY+ ELITE MEMBER
-        </div>
-      </motion.div>
+        <h2 style={{ fontSize: '1.8rem', fontWeight: 900, fontFamily: 'Orbitron', letterSpacing: '0.05em', marginTop: '24px' }}>{userName}</h2>
+        <p style={{ color: 'var(--color-text-dim)', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginTop: '4px' }}>{goalText}</p>
+      </div>
 
-      {/* Snippet: Wearable Sync Bridge */}
-      <motion.div variants={itemVariants} style={{ background: 'white', borderRadius: '32px', padding: '24px', boxShadow: 'var(--shadow-md)', border: '1px solid #f2f2f7' }}>
-         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-               <Watch size={24} color="var(--color-primary)" />
-               <span style={{ fontWeight: 800, fontSize: '1rem' }}>Ecosystem Bridge</span>
+      {/* 2. Achievement Stats */}
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <motion.div variants={itemVariants} className="glass-card" style={{ flex: 1, padding: '20px', textAlign: 'center' }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--color-primary)' }}>14</div>
+          <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-text-dim)', textTransform: 'uppercase', marginTop: '4px' }}>DAY STREAK</div>
+        </motion.div>
+        <motion.div variants={itemVariants} className="glass-card" style={{ flex: 1, padding: '20px', textAlign: 'center' }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--color-secondary)' }}>2.4k</div>
+          <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-text-dim)', textTransform: 'uppercase', marginTop: '4px' }}>XP POINTS</div>
+        </motion.div>
+        <motion.div variants={itemVariants} className="glass-card" style={{ flex: 1, padding: '20px', textAlign: 'center' }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ff9500' }}>Lvl 8</div>
+          <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--color-text-dim)', textTransform: 'uppercase', marginTop: '4px' }}>OPERATIVE</div>
+        </motion.div>
+      </div>
+
+      {/* 3. Settings Menu */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {menuItems.map((item, i) => (
+          <motion.div 
+            key={i} 
+            variants={itemVariants}
+            whileHover={{ x: 5 }}
+            className="glass-card" 
+            style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '20px', cursor: 'pointer' }}
+          >
+            <div style={{ color: item.color }}>{item.icon}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '1rem', fontWeight: 800 }}>{item.label}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-dim)' }}>{item.sub}</div>
             </div>
-            <button 
-              onClick={simulateSync}
-              disabled={syncing}
-              style={{ background: synced ? '#34c759' : '#f2f2f7', color: synced ? 'white' : 'var(--color-text-secondary)', border: 'none', padding: '8px 16px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.3s' }}
-            >
-              {syncing ? <RotateCw size={14} className="spin-animation" /> : synced ? <CheckCircle2 size={14} /> : <RotateCw size={14} />}
-              {syncing ? 'SYNCING...' : synced ? 'SYNCED' : 'CALIBRATE'}
-            </button>
-         </div>
-         <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, fontWeight: 500, marginBottom: '20px' }}>
-            Synchronize your Apple Health, Garmin, or or or Google Fit bio-metrics to enhance AI precision.
-         </p>
-         <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ flex: 1, padding: '16px', borderRadius: '20px', background: '#f8f9fa', border: '1px solid #f2f2f7', textAlign: 'center' }}>
-               <Smartphone size={18} style={{ marginBottom: '8px' }} />
-               <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-tertiary)', textTransform: 'uppercase' }}>Phone</div>
-               <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>Connected</div>
-            </div>
-            <div style={{ flex: 1, padding: '16px', borderRadius: '20px', background: '#f8f9fa', border: '1px solid #f2f2f7', textAlign: 'center' }}>
-               <Watch size={18} style={{ marginBottom: '8px' }} />
-               <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-tertiary)', textTransform: 'uppercase' }}>Watch</div>
-               <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>Standby</div>
-            </div>
-         </div>
-      </motion.div>
+            <ChevronRight size={18} color="var(--color-text-dim)" />
+          </motion.div>
+        ))}
+      </div>
 
-      <motion.div variants={itemVariants} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-         <div className="card-vitality" style={{ padding: '20px', border: 'none', background: '#f8f9fa' }}>
-            <Target size={20} color="var(--color-primary)" style={{ marginBottom: '12px' }} />
-            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-tertiary)', textTransform: 'uppercase' }}>Current Goal</div>
-            <div style={{ fontSize: '1rem', fontWeight: 900, marginTop: '4px' }}>{profile?.goal?.toUpperCase()}</div>
-         </div>
-         <div className="card-vitality" style={{ padding: '20px', border: 'none', background: '#f8f9fa' }}>
-            <Activity size={20} color="var(--color-secondary)" style={{ marginBottom: '12px' }} />
-            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-tertiary)', textTransform: 'uppercase' }}>Activity</div>
-            <div style={{ fontSize: '1rem', fontWeight: 900, marginTop: '4px' }}>{profile?.activity?.toUpperCase()}</div>
-         </div>
-      </motion.div>
-
-      <motion.div variants={itemVariants} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-         <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: '8px' }}>Security & Matrix</h3>
-         {[
-           { icon: <Settings size={20} />, label: 'Ecosystem Calibration', color: '#64748b' },
-           { icon: <Shield size={20} />, label: 'Privacy & Bio-Data', color: '#10b981' }
-         ].map(item => (
-           <div key={item.label} className="card-vitality" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 24px', border: 'none', boxShadow: 'var(--shadow-sm)' }}>
-              <div style={{ color: item.color }}>{item.icon}</div>
-              <span style={{ flex: 1, fontWeight: 700 }}>{item.label}</span>
-              <ChevronRight size={18} color="var(--color-border)" />
-           </div>
-         ))}
-      </motion.div>
-
+      {/* 4. Danger Zone */}
       <motion.button 
         variants={itemVariants}
-        whileTap={{ scale: 0.98 }}
         onClick={logout}
-        style={{ marginTop: '12px', background: '#fee2e2', color: '#dc2626', border: 'none', padding: '20px', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontWeight: 900, fontSize: '1rem' }}
+        style={{ 
+          marginTop: '20px',
+          padding: '20px', 
+          background: 'rgba(255, 59, 48, 0.05)', 
+          border: '1px solid rgba(255, 59, 48, 0.2)', 
+          borderRadius: '24px', 
+          color: '#ff3b30', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          gap: '12px',
+          fontWeight: 900,
+          fontSize: '0.8rem',
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          cursor: 'pointer'
+        }}
       >
-        <LogOut size={20} /> Terminate Session
+        <LogOut size={20} />
+        TERMINATE SESSION
       </motion.button>
     </motion.div>
   );
